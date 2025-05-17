@@ -2,14 +2,11 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import '@google/model-viewer';
 
-
-<h1 className="text-3xl font-bold text-red-500">Tailwind is working!</h1>
-
 const Menu = () => {
   const [dishes, setDishes] = useState([]);
   const [selected, setSelected] = useState(null);
 
-  const SERVER_IP = '192.168.0.11'; // 👈 your local IP
+  const SERVER_IP = '192.168.137.116'; // your machine's local IP
   const BACKEND_PORT = '5000';
 
   useEffect(() => {
@@ -59,7 +56,7 @@ const Menu = () => {
               ✕
             </button>
             <h2 className="text-lg font-bold mb-2">{selected.name}</h2>
-
+          
             <model-viewer
               src={`http://${SERVER_IP}:${BACKEND_PORT}${selected.model_url}`}
               ios-src={
@@ -70,6 +67,7 @@ const Menu = () => {
               ar
               ar-modes="webxr scene-viewer quick-look"
               auto-rotate
+              ar-scale="0.001 0.001 0.001"
               camera-controls
               style={{ width: '100%', height: '300px', background: '#000' }}
             />

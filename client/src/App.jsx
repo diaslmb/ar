@@ -4,16 +4,19 @@ import Menu from './pages/Menu';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/admin" element={<DishManager />} />
-        <Route path="/menu" element={<Menu />} />
-      </Routes>
-    </BrowserRouter>
+    <div className="p-4">
+      <h1 className="text-3xl text-red-500 font-bold mb-4">
+        ✅ Tailwind is working!
+      </h1>
+
+      <BrowserRouter>
+        <Routes>
+          <Route path="/admin" element={<DishManager />} />
+          <Route path="/menu" element={<Menu />} />
+        </Routes>
+      </BrowserRouter>
+    </div>
   );
 }
-
-<h1 className="text-4xl text-blue-500 font-bold">Tailwind is working!</h1>
-
 
 export default App;
