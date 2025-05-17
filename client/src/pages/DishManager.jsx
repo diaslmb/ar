@@ -2,27 +2,84 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const DishManager = () => {
-  const [dishes, setDishes] = useState([]);
+  const [menus, setMenus] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [allDishes, setAllDishes] = useState([]);
+  const [filteredDishes, setFilteredDishes] = useState([]);
+
+  const [selectedMenuId, setSelectedMenuId] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+
   const [form, setForm] = useState({
     name: '',
     description: '',
     price: '',
     image: null,
     model: null,
+    usdz: null,
+    category_id: '',
   });
 
   useEffect(() => {
+    fetchMenus();
     fetchDishes();
   }, []);
 
+  const fetchMenus = async () => {
+    const res = await axios.get('/api/menus');
+    setMenus(res.data);
+  };
+
+  const fetchCategories = async (menuId) => {
+    const res = await axios.get(`/api/categories?menu_id=${menuId}`);
+    setCategories(res.data);
+  };
+
   const fetchDishes = async () => {
     const res = await axios.get('/api/dishes');
-    setDishes(res.data);
+    setAllDishes(res.data);
+    setFilteredDishes(res.data);
+  };
+
+  const handleMenuChange = async (e) => {
+    const menuId = e.target.value;
+    setSelectedMenuId(menuId);
+    setSelectedCategoryId('');
+    setForm(prev => ({ ...prev, category_id: '' }));
+
+    if (menuId) {
+      await fetchCategories(menuId);
+      const filtered = allDishes.filter(d => String(d.menu_id) === String(menuId));
+      setFilteredDishes(filtered);
+    } else {
+      setCategories([]);
+      setFilteredDishes(allDishes);
+    }
+  };
+
+  const handleCategoryChange = (e) => {
+    const categoryId = e.target.value;
+    setSelectedCategoryId(categoryId);
+    setForm(prev => ({ ...prev, category_id: categoryId }));
+
+    if (categoryId) {
+      const filtered = allDishes.filter(
+        d => String(d.category_id) === String(categoryId)
+      );
+      setFilteredDishes(filtered);
+    } else if (selectedMenuId) {
+      const filtered = allDishes.filter(
+        d => String(d.menu_id) === String(selectedMenuId)
+      );
+      setFilteredDishes(filtered);
+    } else {
+      setFilteredDishes(allDishes);
+    }
   };
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    setForm((prev) => ({
+    setForm(prev => ({
       ...prev,
       [name]: files ? files[0] : value,
     }));
@@ -35,26 +92,54 @@ const DishManager = () => {
     formData.append('name', form.name);
     formData.append('description', form.description);
     formData.append('price', form.price);
+    formData.append('category_id', form.category_id);
+    formData.append('menu_id', selectedMenuId);
     formData.append('image', form.image);
     formData.append('model', form.model);
     formData.append('usdz', form.usdz);
-
 
     await axios.post('/api/dishes', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
 
-    setForm({ name: '', description: '', price: '', image: null, model: null });
-    fetchDishes();
+    setForm({
+      name: '',
+      description: '',
+      price: '',
+      image: null,
+      model: null,
+      usdz: null,
+      category_id: '',
+    });
+    setSelectedMenuId('');
+    setSelectedCategoryId('');
+    setCategories([]);
+    await fetchDishes();
   };
 
   return (
     <div className="p-4 max-w-xl mx-auto">
       <h2 className="text-xl font-bold mb-4">Add New Dish</h2>
       <form onSubmit={handleSubmit} className="space-y-3">
-        <input name="name" placeholder="Name" onChange={handleChange} value={form.name} className="w-full p-2 border" required />
-        <input name="description" placeholder="Description" onChange={handleChange} value={form.description} className="w-full p-2 border" />
-        <input name="price" type="number" placeholder="Price" onChange={handleChange} value={form.price} className="w-full p-2 border" required />
+        <select value={selectedMenuId} onChange={handleMenuChange} required className="w-full p-2 border">
+          <option value="">Select Menu</option>
+          {menus.map(menu => (
+            <option key={menu.id} value={menu.id}>{menu.name}</option>
+          ))}
+        </select>
+
+        {selectedMenuId && (
+          <select name="category_id" onChange={handleCategoryChange} value={form.category_id} required className="w-full p-2 border">
+            <option value="">Select Category</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+        )}
+
+        <input name="name" placeholder="Name" onChange={handleChange} value={form.name} required className="w-full p-2 border" />
+        <textarea name="description" placeholder="Description" onChange={handleChange} value={form.description} className="w-full p-2 border" />
+        <input name="price" type="number" placeholder="Price" onChange={handleChange} value={form.price} required className="w-full p-2 border" />
         <input name="image" type="file" accept="image/*" onChange={handleChange} className="w-full" />
         <input name="model" type="file" accept=".glb,.gltf" onChange={handleChange} className="w-full" />
         <input name="usdz" type="file" accept=".usdz" onChange={handleChange} className="w-full" />
@@ -63,11 +148,12 @@ const DishManager = () => {
 
       <h3 className="text-lg font-bold mt-8 mb-2">Existing Dishes</h3>
       <ul className="space-y-2">
-        {dishes.map((dish) => (
+        {filteredDishes.map(dish => (
           <li key={dish.id} className="border p-3 rounded">
-            <p><strong>{dish.name}</strong> — {dish.price}₸</p>
-            {dish.image_url && <img src={dish.image_url} alt={dish.name} className="w-32 mt-2" />}
-            {dish.model_url && <p className="text-sm mt-1 text-blue-500">Model: {dish.model_url}</p>}
+            <p><strong>{dish.name}</strong> — {dish.price} ₸</p>
+            <p className="text-sm text-gray-600">
+              Menu: {dish.menu_name || '—'}, Category: {dish.category_name || '—'}
+            </p>
           </li>
         ))}
       </ul>

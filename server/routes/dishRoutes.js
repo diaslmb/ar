@@ -4,13 +4,14 @@ import { getAllDishes, createDish } from '../controllers/dishController.js';
 
 const router = express.Router();
 
-// Setup multer for file uploads
+// Multer setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
   filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname),
 });
 const upload = multer({ storage });
 
+// ✅ Use the actual controller
 router.get('/', getAllDishes);
 
 router.post(
