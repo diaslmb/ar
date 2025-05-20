@@ -135,7 +135,6 @@ const Menu = () => {
               ✕
             </button>
             <h2 className="text-lg font-bold mb-2">{selected.name}</h2>
-
             <model-viewer
               src={`http://${SERVER_IP}:${BACKEND_PORT}${selected.model_url}`}
               ios-src={

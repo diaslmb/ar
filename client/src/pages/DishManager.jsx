@@ -4,26 +4,31 @@ import axios from 'axios';
 const DishManager = () => {
   const [menus, setMenus] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [allDishes, setAllDishes] = useState([]);
+  const [dishes, setDishes] = useState([]);
   const [filteredDishes, setFilteredDishes] = useState([]);
 
-  const [selectedMenuId, setSelectedMenuId] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
-
   const [form, setForm] = useState({
+    menu_id: '',
+    category_id: '',
     name: '',
     description: '',
     price: '',
     image: null,
     model: null,
     usdz: null,
-    category_id: '',
   });
+
+  const [editingId, setEditingId] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
 
   useEffect(() => {
     fetchMenus();
     fetchDishes();
   }, []);
+
+  useEffect(() => {
+    filterDishes();
+  }, [dishes, form.menu_id, form.category_id]);
 
   const fetchMenus = async () => {
     const res = await axios.get('/api/menus');
@@ -37,123 +42,179 @@ const DishManager = () => {
 
   const fetchDishes = async () => {
     const res = await axios.get('/api/dishes');
-    setAllDishes(res.data);
-    setFilteredDishes(res.data);
+    setDishes(res.data);
   };
 
-  const handleMenuChange = async (e) => {
-    const menuId = e.target.value;
-    setSelectedMenuId(menuId);
-    setSelectedCategoryId('');
-    setForm(prev => ({ ...prev, category_id: '' }));
-
-    if (menuId) {
-      await fetchCategories(menuId);
-      const filtered = allDishes.filter(d => String(d.menu_id) === String(menuId));
-      setFilteredDishes(filtered);
-    } else {
-      setCategories([]);
-      setFilteredDishes(allDishes);
+  const filterDishes = () => {
+    let filtered = [...dishes];
+    if (form.menu_id) {
+      filtered = filtered.filter(d => String(d.menu_id) === String(form.menu_id));
     }
-  };
-
-  const handleCategoryChange = (e) => {
-    const categoryId = e.target.value;
-    setSelectedCategoryId(categoryId);
-    setForm(prev => ({ ...prev, category_id: categoryId }));
-
-    if (categoryId) {
-      const filtered = allDishes.filter(
-        d => String(d.category_id) === String(categoryId)
-      );
-      setFilteredDishes(filtered);
-    } else if (selectedMenuId) {
-      const filtered = allDishes.filter(
-        d => String(d.menu_id) === String(selectedMenuId)
-      );
-      setFilteredDishes(filtered);
-    } else {
-      setFilteredDishes(allDishes);
+    if (form.category_id) {
+      filtered = filtered.filter(d => String(d.category_id) === String(form.category_id));
     }
+    setFilteredDishes(filtered);
   };
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: files ? files[0] : value,
-    }));
+    const updatedValue = files ? files[0] : value;
+
+    setForm(prev => {
+      const updatedForm = {
+        ...prev,
+        [name]: updatedValue,
+      };
+
+      if (name === 'menu_id') {
+        fetchCategories(value);
+        updatedForm.category_id = '';
+      }
+
+      return updatedForm;
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     const formData = new FormData();
-    formData.append('name', form.name);
-    formData.append('description', form.description);
-    formData.append('price', form.price);
-    formData.append('category_id', form.category_id);
-    formData.append('menu_id', selectedMenuId);
-    formData.append('image', form.image);
-    formData.append('model', form.model);
-    formData.append('usdz', form.usdz);
+    for (let key in form) {
+      formData.append(key, form[key]);
+    }
 
-    await axios.post('/api/dishes', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    if (editingId) {
+      await axios.put(`/api/dishes/${editingId}`, formData);
+      console.log('Dish updated:', editingId);
+    } else {
+      await axios.post('/api/dishes', formData);
+      console.log('Dish created');
+    }
 
+    resetForm();
+    fetchDishes();
+  };
+
+  const resetForm = () => {
     setForm({
+      menu_id: '',
+      category_id: '',
       name: '',
       description: '',
       price: '',
       image: null,
       model: null,
       usdz: null,
-      category_id: '',
     });
-    setSelectedMenuId('');
-    setSelectedCategoryId('');
-    setCategories([]);
-    await fetchDishes();
+    setEditingId(null);
+  };
+
+  const handleEdit = (dish) => {
+    console.log('Editing dish:', dish);
+    setForm({
+      menu_id: dish.menu_id,
+      category_id: dish.category_id,
+      name: dish.name,
+      description: dish.description,
+      price: dish.price,
+      image: null,
+      model: null,
+      usdz: null,
+    });
+    fetchCategories(dish.menu_id);
+    setEditingId(dish.id);
+  };
+
+  const handleDelete = async (id) => {
+    console.log('Deleting dish ID:', id);
+    if (window.confirm('Are you sure you want to delete this dish?')) {
+      await axios.delete(`/api/dishes/${id}`);
+      fetchDishes();
+    }
   };
 
   return (
     <div className="p-4 max-w-xl mx-auto">
       <h2 className="text-xl font-bold mb-4">Add New Dish</h2>
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <select value={selectedMenuId} onChange={handleMenuChange} required className="w-full p-2 border">
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <select
+          name="menu_id"
+          onChange={handleChange}
+          value={form.menu_id}
+          className="w-full p-2 border"
+          required
+        >
           <option value="">Select Menu</option>
           {menus.map(menu => (
             <option key={menu.id} value={menu.id}>{menu.name}</option>
           ))}
         </select>
 
-        {selectedMenuId && (
-          <select name="category_id" onChange={handleCategoryChange} value={form.category_id} required className="w-full p-2 border">
-            <option value="">Select Category</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
-        )}
+        <select
+          name="category_id"
+          onChange={handleChange}
+          value={form.category_id}
+          className="w-full p-2 border"
+          required
+        >
+          <option value="">Select Category</option>
+          {categories.map(cat => (
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
+          ))}
+        </select>
 
-        <input name="name" placeholder="Name" onChange={handleChange} value={form.name} required className="w-full p-2 border" />
+        <input name="name" placeholder="Name" onChange={handleChange} value={form.name} className="w-full p-2 border" required />
         <textarea name="description" placeholder="Description" onChange={handleChange} value={form.description} className="w-full p-2 border" />
-        <input name="price" type="number" placeholder="Price" onChange={handleChange} value={form.price} required className="w-full p-2 border" />
+        <input name="price" type="number" placeholder="Price" onChange={handleChange} value={form.price} className="w-full p-2 border" required />
+
         <input name="image" type="file" accept="image/*" onChange={handleChange} className="w-full" />
         <input name="model" type="file" accept=".glb,.gltf" onChange={handleChange} className="w-full" />
         <input name="usdz" type="file" accept=".usdz" onChange={handleChange} className="w-full" />
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Submit</button>
+
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
+          {editingId ? 'Update' : 'Submit'}
+        </button>
       </form>
 
       <h3 className="text-lg font-bold mt-8 mb-2">Existing Dishes</h3>
       <ul className="space-y-2">
-        {filteredDishes.map(dish => (
-          <li key={dish.id} className="border p-3 rounded">
-            <p><strong>{dish.name}</strong> — {dish.price} ₸</p>
-            <p className="text-sm text-gray-600">
-              Menu: {dish.menu_name || '—'}, Category: {dish.category_name || '—'}
-            </p>
+        {filteredDishes.map((dish) => (
+          <li
+            key={dish.id}
+            className="border p-3 rounded relative hover:bg-gray-50"
+            onMouseEnter={() => setHoveredId(dish.id)}
+            onMouseLeave={() => setHoveredId(null)}
+          >
+            <div className="flex justify-between items-center">
+              <div>
+                <p><strong>{dish.name}</strong> — {dish.price}₸</p>
+                <p className="text-sm text-gray-500">
+                  Menu: {dish.menu_name || '—'}, Category: {dish.category_name || '—'}
+                </p>
+              </div>
+              {hoveredId === dish.id && (
+                <div className="flex gap-2 items-center">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(dish);
+                    }}
+                    className="bg-yellow-400 px-2 py-1 rounded text-sm"
+                  >
+                    Изменить
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(dish.id);
+                    }}
+                    className="bg-red-500 text-white px-2 py-1 rounded text-sm"
+                  >
+                    Удалить
+                  </button>
+                </div>
+              )}
+            </div>
           </li>
         ))}
       </ul>
