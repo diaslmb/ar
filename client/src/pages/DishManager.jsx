@@ -27,6 +27,12 @@ const DishManager = () => {
   }, []);
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = '/login';
+  }, []);
+
+
+  useEffect(() => {
     filterDishes();
   }, [dishes, form.menu_id, form.category_id]);
 
