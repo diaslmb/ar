@@ -135,6 +135,7 @@ const Menu = () => {
               ✕
             </button>
             <h2 className="text-lg font-bold mb-2">{selected.name}</h2>
+
             <model-viewer
               src={`http://${SERVER_IP}:${BACKEND_PORT}${selected.model_url}`}
               ios-src={
@@ -148,7 +149,11 @@ const Menu = () => {
               ar-scale="0.001 0.001 0.001"
               camera-controls
               style={{ width: '100%', height: '300px', background: '#000' }}
-            />
+            >
+              <button slot="ar-button" className="bg-yellow-500 text-black px-4 py-2 rounded mt-2">
+                View in AR
+              </button>
+            </model-viewer>
           </div>
         </div>
       )}
