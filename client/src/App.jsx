@@ -6,11 +6,7 @@ import Register from './pages/Register';
 
 function App() {
   return (
-    <div className="p-4">
-      <h1 className="text-3xl text-red-500 font-bold mb-4">
-        ✅ Tailwind is working!
-      </h1>
-
+    <div className="">
       <BrowserRouter>
         <Routes>
           <Route path="/admin" element={<DishManager />} />
